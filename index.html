@@ -3,64 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Power Mac G4 - Mac OS X Panther</title>
-    
+    <title>Studio Display - Mac OS X Panther</title>
     <script src="coi-serviceworker.js"></script>
-
     <style>
-        body {
-            margin: 0;
-            background-color: #1a1a1a;
-            color: #eee;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #1a252f;
+            display: flex; align-items: center; justify-content: center;
             overflow: hidden;
+            font-family: -apple-system, system-ui, sans-serif;
         }
-        .mac-container {
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            border-radius: 12px;
-            overflow: hidden;
-            background: #000;
-            line-height: 0;
+
+        /* Responsive Wrapper */
+        .mac-wrapper {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            /* Adjusts size based on viewport */
+            transform: scale(min(0.75, 90vw / 1150px, 85vh / 950px));
+            transform-origin: center;
         }
-        .status-bar {
-            margin-top: 15px;
-            font-size: 14px;
+
+        /* THE STUDIO DISPLAY SHELL */
+        .studio-display {
+            position: relative;
+            background: #e6e6e6; 
+            padding: 30px 30px 65px 30px;
+            border-radius: 18px;
+            border: 1px solid #ccc;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+            display: flex; flex-direction: column; align-items: center;
+            margin-bottom: 50px; /* Creates room for the feet and status message */
+        }
+
+        /* Clear Acrylic Feet */
+        .studio-display::before {
+            content: ''; position: absolute; bottom: -40px; left: 8%; right: 8%; height: 50px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0 0 25px 25px; z-index: -1;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+
+        .screen-container {
+            background: #000; padding: 6px; border-radius: 4px;
+            line-height: 0; transition: opacity 0.5s ease;
+        }
+
+        .controls {
+            width: 100%; display: flex; align-items: center;
+            justify-content: center; position: relative; margin-top: 22px;
+        }
+
+        /* Apple Logo (Data URI for reliability) */
+        .apple-logo {
+            width: 38px; height: 38px;
+            background-color: #777;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 172 172' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M134.1 98.4c-.2-19.1 15.6-28.2 16.3-28.6-8.9-13-22.6-14.8-27.5-15-11.7-1.2-22.9 7-28.8 7-5.9 0-15.1-6.8-24.8-6.6-12.7.2-24.5 7.4-31 18.7-13.2 22.8-3.4 56.6 9.4 75 6.3 9.1 13.7 19.1 23.6 18.8 9.5-.4 13.1-6.1 24.6-6.1 11.4 0 14.7 6.1 24.8 5.9 10.3-.2 16.7-9.1 22.9-18.2 7.3-10.6 10.3-20.9 10.4-21.4-.2-.1-20-7.7-20-29.5zm-18.4-56.1c5.2-6.4 8.8-15.2 7.8-23.9-7.5.3-16.5 5-21.9 11.3-4.8 5.6-9.1 14.5-7.9 23.1 8.3.6 16.8-4.1 22-10.5z'/%3E%3C/svg%3E") no-repeat center;
+            mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 172 172' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M134.1 98.4c-.2-19.1 15.6-28.2 16.3-28.6-8.9-13-22.6-14.8-27.5-15-11.7-1.2-22.9 7-28.8 7-5.9 0-15.1-6.8-24.8-6.6-12.7.2-24.5 7.4-31 18.7-13.2 22.8-3.4 56.6 9.4 75 6.3 9.1 13.7 19.1 23.6 18.8 9.5-.4 13.1-6.1 24.6-6.1 11.4 0 14.7 6.1 24.8 5.9 10.3-.2 16.7-9.1 22.9-18.2 7.3-10.6 10.3-20.9 10.4-21.4-.2-.1-20-7.7-20-29.5zm-18.4-56.1c5.2-6.4 8.8-15.2 7.8-23.9-7.5.3-16.5 5-21.9 11.3-4.8 5.6-9.1 14.5-7.9 23.1 8.3.6 16.8-4.1 22-10.5z'/%3E%3C/svg%3E") no-repeat center;
+            mask-size: contain;
+        }
+
+        .power-btn {
+            position: absolute; right: 0; width: 34px; height: 34px;
+            background: #f0f0f0; border-radius: 50%; border: 1px solid #ccc;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+
+        .led {
+            position: absolute; right: 45px; width: 8px; height: 8px;
+            background: #bbb; border-radius: 50%;
+        }
+
+        .led-on { background: #fff; box-shadow: 0 0 8px #fff; animation: breathe 3s infinite; }
+
+        @keyframes breathe { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        /* STATUS MESSAGE BELOW THE STAND */
+        .status-msg {
+            text-align: center;
+            font-size: 18px; /* Slightly larger since it's inside the scale-down wrapper */
             color: #888;
+            margin-top: 10px;
         }
+
+        iframe { border: none; width: 1024px; height: 768px; background: #000; }
+        .off { opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div class="mac-container">
-        <iframe 
-            id="mac-iframe"
-            src="https://infinitemac.org/embed?disk=Mac+OS+X+10.3&machine=Power+Macintosh+G4+%28PCI+Graphics%29&memory=256&apple_talk=false&auto_pause=true"
-            width="1024"
-            height="768"
-            allow="cross-origin-isolated"
-            style="border: none;">
-        </iframe>
-    </div>
+    <div class="mac-wrapper">
+        <div class="studio-display">
+            <div id="screen" class="screen-container">
+                <iframe id="it" src="https://infinitemac.org/embed?disk=Mac+OS+X+10.3&machine=Power+Macintosh+G4+%28PCI+Graphics%29&memory=256&auto_pause=true" allow="cross-origin-isolated"></iframe>
+            </div>
+            <div class="controls">
+                <div class="apple-logo"></div>
+                <div id="led" class="led led-on"></div>
+                <button class="power-btn" onclick="toggle()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="3"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"></path></svg>
+                </button>
+            </div>
+        </div>
 
-    <div class="status-bar" id="status">
-        Detecting Performance Mode...
+        <div id="status" class="status-msg">Detecting Performance...</div>
     </div>
 
     <script>
-        // Check if the Service Worker successfully enabled High Performance
-        window.onload = function() {
-            const statusMsg = document.getElementById('status');
+        let on = true;
+        const s = document.getElementById('screen'), l = document.getElementById('led'), f = document.getElementById('it'), src = f.src;
+        
+        function toggle() {
+            on = !on;
+            s.className = on ? 'screen-container' : 'screen-container off';
+            l.className = on ? 'led led-on' : 'led';
+            f.src = on ? src : 'about:blank';
+        }
+
+        window.onload = () => {
+            const m = document.getElementById('status');
             if (window.crossOriginIsolated) {
-                statusMsg.innerHTML = "✅ <strong>High Performance Mode Active</strong> (SharedArrayBuffer Enabled)";
-                statusMsg.style.color = "#4CAF50";
+                m.innerHTML = "<span style='color:#4CAF50'>✅ High Performance Mode Active</span>";
             } else {
-                statusMsg.innerHTML = "⚠️ Running in Fallback Mode (Slower). Refreshing might help.";
-                statusMsg.style.color = "#FFC107";
+                m.innerHTML = "<span style='color:#FFC107'>⚠️ Fallback Mode (Check coi-serviceworker.js)</span>";
             }
         };
     </script>
