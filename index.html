@@ -51,12 +51,10 @@
         .master-btn.emergency { background: #7f1d1d; }
         .master-btn.emergency:hover { background: var(--accent-red); }
 
-        .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
-
-        /* Studio Monitors */
+        /* Studio Monitors - Updated Scaling */
         .studio-wrapper {
             display: flex; flex-direction: row; gap: 40px; align-items: center; justify-content: center;
-            transform: scale(min(1.0, 95vw / 2800px, 85vh / 1100px));
+            transform: scale(min(1.0, 95vw / 2800px, 82vh / 1100px));
             transform-origin: center;
             margin-top: 40px;
         }
@@ -140,7 +138,7 @@
                             <div class="btn-row">
                                 <button class="shell-btn" onclick="mountDisk('${s.id}')" title="Mount Disk">💿</button>
                                 <button id="sleep-${s.id}" class="shell-btn" onclick="toggleSleep('${s.id}')" title="Sleep">🌙</button>
-                                <button class="shell-btn" onclick="openGarden('it-${s.id}')" title="Library">🌱</button>
+                                <button class="shell-btn" onclick="openGarden('${s.id}')" title="Library Search">🌱</button>
                                 <button class="shell-btn" onclick="togglePower('${s.id}')">⏻</button>
                             </div>
                         </div>
@@ -159,61 +157,77 @@
         };
 
         // --- IMPROVED PERFORMANCE MONITORING ---
-let frameCount = 0;
-let lastTime = performance.now();
+        let frameCount = 0;
+        let lastTime = performance.now();
 
-function updatePerfHUD() {
-    const now = performance.now();
-    frameCount++;
+        function updatePerfHUD() {
+            const now = performance.now();
+            frameCount++;
 
-    if (now >= lastTime + 1000) {
-        const fps = Math.round((frameCount * 1000) / (now - lastTime));
-        const fpsEl = document.getElementById('fps-load');
-        fpsEl.innerText = fps;
-        fpsEl.style.color = fps < 45 ? "var(--accent-red)" : "var(--accent-green)";
+            if (now >= lastTime + 1000) {
+                const fps = Math.round((frameCount * 1000) / (now - lastTime));
+                const fpsEl = document.getElementById('fps-load');
+                fpsEl.innerText = fps;
+                fpsEl.style.color = fps < 45 ? "var(--accent-red)" : "var(--accent-green)";
 
-        // 1. Calculate weighted load based on OS complexity
-        // System 7 = 1 unit, OS 8 = 2 units, OS 9 = 3 units
-        let currentLoad = 0;
-        if (powerStates.sys7.on && !powerStates.sys7.sleeping) currentLoad += 1;
-        if (powerStates.os8.on && !powerStates.os8.sleeping) currentLoad += 2;
-        if (powerStates.os9.on && !powerStates.os9.sleeping) currentLoad += 3;
+                let currentLoad = 0;
+                if (powerStates.sys7.on && !powerStates.sys7.sleeping) currentLoad += 1;
+                if (powerStates.os8.on && !powerStates.os8.sleeping) currentLoad += 2;
+                if (powerStates.os9.on && !powerStates.os9.sleeping) currentLoad += 3;
 
-        // 2. Determine CPU Text (Scale of 0 to 6)
-        let cpuText = "IDLE";
-        let cpuColor = "#94a3b8"; // Slate
+                let cpuText = "IDLE";
+                let cpuColor = "#94a3b8";
 
-        if (currentLoad >= 5) {
-            cpuText = "HIGH";
-            cpuColor = "var(--accent-red)";
-        } else if (currentLoad >= 3) {
-            cpuText = "MED";
-            cpuColor = "#fbbf24"; // Amber
-        } else if (currentLoad >= 1) {
-            cpuText = "LOW";
-            cpuColor = "var(--accent-green)";
+                if (currentLoad >= 5) {
+                    cpuText = "HIGH";
+                    cpuColor = "var(--accent-red)";
+                } else if (currentLoad >= 3) {
+                    cpuText = "MED";
+                    cpuColor = "#fbbf24";
+                } else if (currentLoad >= 1) {
+                    cpuText = "LOW";
+                    cpuColor = "var(--accent-green)";
+                }
+
+                const cpuEl = document.getElementById('cpu-load');
+                cpuEl.innerText = cpuText;
+                cpuEl.style.color = cpuColor;
+
+                const gpuBase = (currentLoad / 6) * 100;
+                const fpsDropPenalty = Math.max(0, (60 - fps) * 2); 
+                const gpuFinal = Math.min(100, Math.round(gpuBase + fpsDropPenalty));
+                
+                const gpuEl = document.getElementById('gpu-load');
+                gpuEl.innerText = gpuFinal + "%";
+                gpuEl.style.color = gpuFinal > 75 ? "var(--accent-red)" : "var(--accent-green)";
+
+                frameCount = 0;
+                lastTime = now;
+            }
+            requestAnimationFrame(updatePerfHUD);
+        }
+        updatePerfHUD();
+
+        // --- UNIVERSAL DISK MOUNTER ---
+        function mountDisk(id) {
+            let url = prompt("Paste the DIRECT URL of a .dsk, .iso, or .img file:\nSupports Macintosh Garden, Repository, and Internet Archive.");
+            
+            if (url) {
+                url = url.trim();
+                const protectedSites = ['macintoshgarden.org', 'macintoshrepository.org', 'archive.org', 'ia80', 'ia60'];
+                const needsProxy = protectedSites.some(site => url.includes(site));
+
+                if (needsProxy && !url.includes('corsproxy.io')) {
+                    url = 'https://corsproxy.io/?' + encodeURIComponent(url);
+                }
+
+                const iframe = document.getElementById(`it-${id}`);
+                updateLED(id, 'loading');
+                iframe.contentWindow.postMessage({ type: "emulator_load_disk", url: url }, "*");
+                setTimeout(() => updateLED(id, 'ready'), 3000);
+            }
         }
 
-        const cpuEl = document.getElementById('cpu-load');
-        cpuEl.innerText = cpuText;
-        cpuEl.style.color = cpuColor;
-
-        // 3. GPU Load Accuracy
-        // Base GPU load on FPS health + weighted system load
-        const gpuBase = (currentLoad / 6) * 100;
-        const fpsDropPenalty = Math.max(0, (60 - fps) * 2); 
-        const gpuFinal = Math.min(100, Math.round(gpuBase + fpsDropPenalty));
-        
-        const gpuEl = document.getElementById('gpu-load');
-        gpuEl.innerText = gpuFinal + "%";
-        gpuEl.style.color = gpuFinal > 75 ? "var(--accent-red)" : "var(--accent-green)";
-
-        frameCount = 0;
-        lastTime = now;
-    }
-    requestAnimationFrame(updatePerfHUD);
-}
-updatePerfHUD();
         // --- SYSTEM ACTIONS ---
         window.addEventListener("message", (e) => {
             const systemEntries = Object.entries(powerStates);
@@ -246,23 +260,23 @@ updatePerfHUD();
             updateLED(id, state.sleeping ? 'sleep' : 'ready');
         }
 
-        function mountDisk(id) {
-            const url = prompt("Paste direct URL to .dsk / .iso:");
-            if (url) document.getElementById(`it-${id}`).contentWindow.postMessage({ type: "emulator_load_disk", url: url }, "*");
-        }
-
         function togglePower(id) {
             const state = powerStates[id];
             const iframe = document.getElementById(`it-${id}`);
             state.on = !state.on;
             if (state.on) {
-                iframe.src = iframe.src; // Reload
+                iframe.src = iframe.src;
                 iframe.classList.remove('screen-off');
                 updateLED(id, 'loading');
             } else {
                 iframe.classList.add('screen-off');
                 updateLED(id, 'off');
             }
+        }
+
+        function openGarden(id) {
+            let searchTerm = (id === 'sys7') ? "system 7" : (id === 'os8') ? "mac os 8" : "mac os 9 3d";
+            window.open(`https://macintoshgarden.org/search/node/${searchTerm}`, '_blank');
         }
 
         function toggleGlobalMute() {
@@ -274,7 +288,7 @@ updatePerfHUD();
         }
 
         function showSaveHelp() {
-            alert("SYSTEM ALERT: Data is volatile. Move files to 'Infinite HD' or use 'Export' in the emulator menu to save to your local drive.");
+            alert("SYSTEM ALERT: Move files to 'Infinite HD' or use 'Export' in the emulator menu to save to your local drive.");
         }
 
         function toggleFullScreen() {
@@ -286,5 +300,3 @@ updatePerfHUD();
     </script>
 </body>
 </html>
-
-
