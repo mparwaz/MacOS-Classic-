@@ -158,36 +158,62 @@
             os9:  { on: true, sleeping: false }
         };
 
-        // --- PERFORMANCE MONITORING ---
-        let frameCount = 0;
-        let lastTime = performance.now();
-        
-        function updatePerfHUD() {
-            const now = performance.now();
-            frameCount++;
+        // --- IMPROVED PERFORMANCE MONITORING ---
+let frameCount = 0;
+let lastTime = performance.now();
 
-            if (now >= lastTime + 1000) {
-                const fps = Math.round((frameCount * 1000) / (now - lastTime));
-                document.getElementById('fps-load').innerText = fps;
-                document.getElementById('fps-load').style.color = fps < 40 ? "var(--accent-red)" : "var(--accent-green)";
+function updatePerfHUD() {
+    const now = performance.now();
+    frameCount++;
 
-                // Calculate GPU Load (Estimated via Render Complexity)
-                // We monitor how many active frames are being drawn
-                const activeSystems = Object.values(powerStates).filter(s => s.on && !s.sleeping).length;
-                const gpuEstimate = Math.min(100, activeSystems * 33);
-                document.getElementById('gpu-load').innerText = gpuEstimate + "%";
-                document.getElementById('gpu-load').style.color = gpuEstimate > 70 ? "var(--accent-red)" : "var(--accent-green)";
+    if (now >= lastTime + 1000) {
+        const fps = Math.round((frameCount * 1000) / (now - lastTime));
+        const fpsEl = document.getElementById('fps-load');
+        fpsEl.innerText = fps;
+        fpsEl.style.color = fps < 45 ? "var(--accent-red)" : "var(--accent-green)";
 
-                const cpuText = activeSystems === 3 ? "HIGH" : activeSystems === 0 ? "IDLE" : "MED";
-                document.getElementById('cpu-load').innerText = cpuText;
-                
-                frameCount = 0;
-                lastTime = now;
-            }
-            requestAnimationFrame(updatePerfHUD);
+        // 1. Calculate weighted load based on OS complexity
+        // System 7 = 1 unit, OS 8 = 2 units, OS 9 = 3 units
+        let currentLoad = 0;
+        if (powerStates.sys7.on && !powerStates.sys7.sleeping) currentLoad += 1;
+        if (powerStates.os8.on && !powerStates.os8.sleeping) currentLoad += 2;
+        if (powerStates.os9.on && !powerStates.os9.sleeping) currentLoad += 3;
+
+        // 2. Determine CPU Text (Scale of 0 to 6)
+        let cpuText = "IDLE";
+        let cpuColor = "#94a3b8"; // Slate
+
+        if (currentLoad >= 5) {
+            cpuText = "HIGH";
+            cpuColor = "var(--accent-red)";
+        } else if (currentLoad >= 3) {
+            cpuText = "MED";
+            cpuColor = "#fbbf24"; // Amber
+        } else if (currentLoad >= 1) {
+            cpuText = "LOW";
+            cpuColor = "var(--accent-green)";
         }
-        updatePerfHUD();
 
+        const cpuEl = document.getElementById('cpu-load');
+        cpuEl.innerText = cpuText;
+        cpuEl.style.color = cpuColor;
+
+        // 3. GPU Load Accuracy
+        // Base GPU load on FPS health + weighted system load
+        const gpuBase = (currentLoad / 6) * 100;
+        const fpsDropPenalty = Math.max(0, (60 - fps) * 2); 
+        const gpuFinal = Math.min(100, Math.round(gpuBase + fpsDropPenalty));
+        
+        const gpuEl = document.getElementById('gpu-load');
+        gpuEl.innerText = gpuFinal + "%";
+        gpuEl.style.color = gpuFinal > 75 ? "var(--accent-red)" : "var(--accent-green)";
+
+        frameCount = 0;
+        lastTime = now;
+    }
+    requestAnimationFrame(updatePerfHUD);
+}
+updatePerfHUD();
         // --- SYSTEM ACTIONS ---
         window.addEventListener("message", (e) => {
             const systemEntries = Object.entries(powerStates);
@@ -260,4 +286,5 @@
     </script>
 </body>
 </html>
+
 
