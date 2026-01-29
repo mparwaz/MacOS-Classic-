@@ -293,7 +293,35 @@
             if (!document.fullscreenElement) document.documentElement.requestFullscreen();
             else document.exitFullscreen();
         }
+
+        // Add this at the bottom of your <script> section
+async function checkStorage() {
+    try {
+        const dbName = "infinite-mac-disk-cache";
+        const request = indexedDB.open(dbName);
+        
+        request.onsuccess = function() {
+            console.log("✅ Persistence Database Access: OK");
+            // If the DB opens, we can "ping" the frames
+            Object.keys(powerStates).forEach(id => {
+                const iframe = document.getElementById(`it-${id}`);
+                iframe.contentWindow.postMessage({ type: "emulator_command", command: "persist" }, "*");
+            });
+        };
+        
+        request.onerror = function() {
+            console.error("❌ Persistence Database Access: BLOCKED by browser");
+            alert("Storage Blocked! Please click the 'Lock' icon in the address bar and enable 'Cookies/Site Data'.");
+        };
+    } catch (e) {
+        console.error("Storage check failed:", e);
+    }
+}
+
+// Run the check 5 seconds after boot
+setTimeout(checkStorage, 5000);
     </script>
 </body>
 </html>
+
 
